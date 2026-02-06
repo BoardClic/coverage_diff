@@ -1,0 +1,10 @@
+{
+  "coverage_options": {
+    "minimum_coverage": 0
+  },
+  "terminal_options": {
+    "print_summary": false,
+    "print_files": false
+  },
+  "skip_files": []
+}
