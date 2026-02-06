@@ -129,6 +129,56 @@ defmodule DiffCoverage.CoverageFilter do
     }
   end
 
+  @doc """
+  Calculates overall coverage statistics from the full coverage data.
+  Returns the total percentage of executable lines covered across all files.
+  """
+  @spec overall_coverage(map()) :: %{
+          total_lines: non_neg_integer(),
+          covered_lines: non_neg_integer(),
+          coverage_percent: float()
+        }
+  def overall_coverage(coverage_data) do
+    stats =
+      coverage_data
+      |> Map.get("source_files", [])
+      |> Enum.reduce(%{total: 0, covered: 0}, fn source_file, acc ->
+        coverage = source_file["coverage"] || []
+
+        file_stats =
+          Enum.reduce(coverage, %{total: 0, covered: 0}, fn cov, file_acc ->
+            case cov do
+              nil ->
+                file_acc
+
+              0 ->
+                %{file_acc | total: file_acc.total + 1}
+
+              n when is_integer(n) and n > 0 ->
+                %{total: file_acc.total + 1, covered: file_acc.covered + 1}
+            end
+          end)
+
+        %{
+          total: acc.total + file_stats.total,
+          covered: acc.covered + file_stats.covered
+        }
+      end)
+
+    coverage_percent =
+      if stats.total > 0 do
+        Float.round(stats.covered / stats.total * 100, 1)
+      else
+        100.0
+      end
+
+    %{
+      total_lines: stats.total,
+      covered_lines: stats.covered,
+      coverage_percent: coverage_percent
+    }
+  end
+
   defp file_has_changes?(source_file, changes) do
     Map.has_key?(changes, source_file["name"])
   end

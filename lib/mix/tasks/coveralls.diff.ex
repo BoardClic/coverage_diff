@@ -103,9 +103,11 @@ defmodule Mix.Tasks.Coveralls.Diff do
           skipped: skipped
         ]
 
+        overall_stats = CoverageFilter.overall_coverage(coverage_data)
+
         case HtmlGenerator.write_report(filtered_files, output_path, report_options) do
           :ok ->
-            print_summary(filtered_files, skipped, output_path)
+            print_summary(filtered_files, overall_stats, skipped, output_path)
             :ok
 
           {:error, reason} ->
@@ -139,10 +141,14 @@ defmodule Mix.Tasks.Coveralls.Diff do
     end
   end
 
-  defp print_summary(filtered_files, skipped, output_path) do
+  defp print_summary(filtered_files, overall_stats, skipped, output_path) do
     stats = CoverageFilter.aggregate_stats(filtered_files)
 
     Mix.shell().info("")
+
+    Mix.shell().info([
+      "Full coverage: #{overall_stats.coverage_percent}% (#{overall_stats.covered_lines}/#{overall_stats.total_lines} lines)"
+    ])
 
     coverage_color =
       cond do
