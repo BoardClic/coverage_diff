@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diff Coverage Report</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      background: white;
+      border-right: 1px solid #e2e8f0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      position: sticky;
+      top: 0;
+    }
+
+    .sidebar-header h1 {
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-header p {
+      font-size: 11px;
+      opacity: 0.9;
+    }
+
+    .sidebar-stats {
+      padding: 12px 16px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .sidebar-stat {
+      text-align: center;
+    }
+
+    .sidebar-stat .value {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .sidebar-stat .label {
+      font-size: 10px;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+
+    .sidebar-stat.coverage .value {
+      color: <%= coverage_color %>;
+    }
+
+    .sidebar-stat.covered .value {
+      color: #22c55e;
+    }
+
+    .sidebar-stat.uncovered .value {
+      color: #ef4444;
+    }
+
+    .sidebar-stat .value.diff-changes {
+      font-size: 14px;
+    }
+
+    .sidebar-stat .value .additions {
+      color: #22c55e;
+    }
+
+    .sidebar-stat .value .deletions {
+      color: #ef4444;
+      margin-left: 4px;
+    }
+
+    .file-list {
+      padding: 8px 0;
+    }
+
+    .file-link {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px;
+      text-decoration: none;
+      color: #334155;
+      font-size: 11px;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .file-link:hover {
+      background: #f1f5f9;
+    }
+
+    .file-link.active {
+      background: #eff6ff;
+      border-left-color: #3b82f6;
+    }
+
+    .file-link .path {
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      direction: rtl;
+      text-align: left;
+    }
+
+    .file-link .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+
+    .file-link .badge.ok {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .file-link .badge.warn {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .skipped-section {
+      border-top: 1px solid #e2e8f0;
+      padding: 12px 16px;
+    }
+
+    .skipped-section summary {
+      font-size: 11px;
+      color: #64748b;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .skipped-section summary:hover {
+      color: #334155;
+    }
+
+    .skipped-list {
+      margin-top: 8px;
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .skipped-list li {
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+      font-size: 10px;
+      color: #94a3b8;
+      padding: 2px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      direction: rtl;
+      text-align: left;
+    }
+
+    /* Main content */
+    .main {
+      flex: 1;
+      margin-left: 280px;
+      padding: 20px;
+    }
+
+    .file-section {
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .file-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      cursor: pointer;
+    }
+
+    .file-header:hover {
+      background: #f1f5f9;
+    }
+
+    .file-path {
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .file-stats {
+      display: flex;
+      gap: 10px;
+      font-size: 11px;
+    }
+
+    .file-stats span {
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .file-stats .covered {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .file-stats .uncovered {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .file-stats .percent {
+      background: #e0e7ff;
+      color: #3730a3;
+      font-weight: 600;
+    }
+
+    .code-container {
+      overflow-x: auto;
+    }
+
+    .code-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .code-table tr {
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .code-table tr:last-child {
+      border-bottom: none;
+    }
+
+    .line-number {
+      width: 50px;
+      text-align: right;
+      padding: 2px 10px;
+      color: #94a3b8;
+      background: #f8fafc;
+      user-select: none;
+      border-right: 1px solid #e2e8f0;
+    }
+
+    .line-status {
+      width: 4px;
+      padding: 0;
+    }
+
+    .line-content {
+      padding: 2px 10px;
+      white-space: pre;
+    }
+
+    /* Coverage colors for changed lines */
+    tr.changed.covered {
+      background-color: #dcfce7;
+    }
+
+    tr.changed.covered .line-status {
+      background-color: #22c55e;
+    }
+
+    tr.changed.uncovered {
+      background-color: #fee2e2;
+    }
+
+    tr.changed.uncovered .line-status {
+      background-color: #ef4444;
+    }
+
+    tr.changed.not-executable {
+      background-color: white;
+    }
+
+    /* Context lines (unchanged) - greyed out */
+    tr.context {
+      background-color: white;
+    }
+
+    tr.context .line-number {
+      color: #d1d5db;
+    }
+
+    tr.context .line-content {
+      color: #9ca3af;
+    }
+
+    /* Gap indicator */
+    tr.gap td {
+      padding: 4px 10px;
+      text-align: center;
+      color: #9ca3af;
+      background: #f8fafc;
+      font-style: italic;
+      font-size: 10px;
+    }
+
+    .no-changes {
+      text-align: center;
+      padding: 60px 20px;
+      color: #64748b;
+    }
+
+    .no-changes h2 {
+      margin-bottom: 10px;
+      color: #22c55e;
+    }
+
+    footer {
+      text-align: center;
+      padding: 16px;
+      color: #94a3b8;
+      font-size: 11px;
+    }
+
+    .collapsible-content {
+      display: block;
+    }
+
+    .file-section.collapsed .collapsible-content {
+      display: none;
+    }
+
+    .toggle-icon {
+      transition: transform 0.2s;
+      font-size: 10px;
+      margin-right: 6px;
+    }
+
+    .file-section.collapsed .toggle-icon {
+      transform: rotate(-90deg);
+    }
+
+    /* Scroll margin for anchor links */
+    .file-section {
+      scroll-margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <%= if files == [] do %>
+    <div class="no-changes">
+      <h2>No Changed Elixir Files</h2>
+      <p>There are no Elixir file changes to analyze coverage for.</p>
+    </div>
+  <% else %>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h1>Diff Coverage</h1>
+          <p>vs <strong><%= base_branch %></strong> &middot; <%= Calendar.strftime(generated_at, "%Y-%m-%d %H:%M") %></p>
+        </div>
+        <div class="sidebar-stats">
+          <div class="sidebar-stat">
+            <div class="value diff-changes">
+              <span class="additions">+<%= diff_stats.additions %></span>
+              <span class="deletions">-<%= diff_stats.deletions %></span>
+            </div>
+            <div class="label">Changes</div>
+          </div>
+          <div class="sidebar-stat coverage">
+            <div class="value"><%= stats.coverage_percent %>%</div>
+            <div class="label">Coverage</div>
+          </div>
+          <div class="sidebar-stat covered">
+            <div class="value"><%= stats.total_covered %></div>
+            <div class="label">Covered</div>
+          </div>
+          <div class="sidebar-stat uncovered">
+            <div class="value"><%= stats.total_uncovered %></div>
+            <div class="label">Uncovered</div>
+          </div>
+        </div>
+        <nav class="file-list">
+          <%= for file <- files do %>
+            <a href="#<%= file_id.(file.path) %>" class="file-link">
+              <span class="path" title="<%= file.path %>"><%= file.path %></span>
+              <%= if file.stats.uncovered_changed > 0 do %>
+                <span class="badge warn"><%= file.stats.uncovered_changed %></span>
+              <% else %>
+                <span class="badge ok">&#10003;</span>
+              <% end %>
+            </a>
+          <% end %>
+        </nav>
+        <%= if skipped.files != [] do %>
+          <details class="skipped-section">
+            <summary><%= skipped.lines %> line(s) in <%= length(skipped.files) %> file(s) skipped</summary>
+            <ul class="skipped-list">
+              <%= for path <- skipped.files do %>
+                <li title="<%= path %>"><%= path %></li>
+              <% end %>
+            </ul>
+          </details>
+        <% end %>
+      </aside>
+
+      <main class="main">
+        <%= for file <- files do %>
+          <div id="<%= file_id.(file.path) %>" class="file-section<%= if file.stats.uncovered_changed == 0, do: " collapsed" %>">
+            <div class="file-header" onclick="this.parentElement.classList.toggle('collapsed')">
+              <span class="file-path">
+                <span class="toggle-icon">&#9660;</span>
+                <%= file.path %>
+              </span>
+              <div class="file-stats">
+                <span class="covered"><%= file.stats.covered_changed %> covered</span>
+                <span class="uncovered"><%= file.stats.uncovered_changed %> uncovered</span>
+                <span class="percent"><%= file.stats.coverage_percent %>%</span>
+              </div>
+            </div>
+            <div class="collapsible-content">
+              <div class="code-container">
+                <table class="code-table">
+                  <tbody>
+                    <%= render_lines.(file.lines) %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <footer>
+          <p>Generated by mix coveralls.diff</p>
+        </footer>
+      </main>
+    </div>
+  <% end %>
+
+  <script>
+    // Highlight active file in sidebar based on scroll position
+    const fileLinks = document.querySelectorAll('.file-link');
+    const fileSections = document.querySelectorAll('.file-section');
+
+    function updateActiveLink() {
+      let current = '';
+      fileSections.forEach(section => {
+        const rect = section.getBoundingClientRect();
+        if (rect.top <= 100) {
+          current = section.id;
+        }
+      });
+
+      fileLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + current) {
+          link.classList.add('active');
+        }
+      });
+    }
+
+    window.addEventListener('scroll', updateActiveLink);
+    updateActiveLink();
+  </script>
+</body>
+</html>
