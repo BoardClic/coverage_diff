@@ -17,15 +17,20 @@ defmodule DiffCoverage.DiffParser do
   @spec changed_lines(base_branch :: String.t()) ::
           {:ok, %{String.t() => [{pos_integer(), pos_integer()}]}} | {:error, term()}
   def changed_lines(base_branch) do
-    resolved_base = resolve_base_ref(base_branch)
+    vcs = vcs()
+    resolved_base = resolve_base_ref(vcs, base_branch)
 
-    case run_git_diff(resolved_base) do
+    case run_diff(vcs, resolved_base) do
       {:ok, diff_output} -> {:ok, parse_diff(diff_output)}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp resolve_base_ref(base_branch) do
+  defp vcs, do: if(File.dir?(".jj"), do: :jj, else: :git)
+
+  defp resolve_base_ref(:jj, base_branch), do: base_branch
+
+  defp resolve_base_ref(:git, base_branch) do
     remote_ref = "origin/#{base_branch}"
 
     case System.cmd("git", ["rev-parse", "--verify", remote_ref], stderr_to_stdout: true) do
@@ -34,12 +39,20 @@ defmodule DiffCoverage.DiffParser do
     end
   end
 
-  defp run_git_diff(base_ref) do
-    case System.cmd("git", ["diff", "--unified=0", "#{base_ref}...HEAD"], stderr_to_stdout: true) do
-      {output, 0} -> {:ok, output}
-      {error, _code} -> {:error, error}
-    end
+  defp run_diff(:jj, base_ref) do
+    System.cmd("jj", ["diff", "--from", base_ref, "--to", "@", "--git", "--context", "0"],
+      stderr_to_stdout: true
+    )
+    |> diff_result()
   end
+
+  defp run_diff(:git, base_ref) do
+    System.cmd("git", ["diff", "--unified=0", "#{base_ref}...HEAD"], stderr_to_stdout: true)
+    |> diff_result()
+  end
+
+  defp diff_result({output, 0}), do: {:ok, output}
+  defp diff_result({error, _code}), do: {:error, error}
 
   @doc """
   Parses raw git diff output into a map of file paths to changed line ranges.
@@ -82,9 +95,10 @@ defmodule DiffCoverage.DiffParser do
            %{additions: non_neg_integer(), deletions: non_neg_integer(), files: non_neg_integer()}}
           | {:error, term()}
   def diff_stats(base_branch) do
-    resolved_base = resolve_base_ref(base_branch)
+    vcs = vcs()
+    resolved_base = resolve_base_ref(vcs, base_branch)
 
-    case run_git_diff(resolved_base) do
+    case run_diff(vcs, resolved_base) do
       {:ok, diff_output} -> {:ok, parse_diff_stats(diff_output)}
       {:error, reason} -> {:error, reason}
     end
