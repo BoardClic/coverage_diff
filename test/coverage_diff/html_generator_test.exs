@@ -81,6 +81,32 @@ defmodule DiffCoverage.HtmlGeneratorTest do
       assert html =~ "1 covered"
       assert html =~ "1 uncovered"
     end
+
+    test "uses provided :stats over stats computed from the displayed files" do
+      filtered_files = [
+        %{
+          path: "lib/foo.ex",
+          lines: [%{line_number: 1, content: "x", coverage: :uncovered, changed: true}],
+          stats: %{
+            changed_lines: 1,
+            covered_changed: 0,
+            uncovered_changed: 1,
+            coverage_percent: 0.0
+          }
+        }
+      ]
+
+      overall = %{
+        total_changed: 10,
+        total_covered: 9,
+        total_uncovered: 1,
+        coverage_percent: 90.0
+      }
+
+      html = HtmlGenerator.generate(filtered_files, stats: overall)
+
+      assert html =~ "90.0%"
+    end
   end
 
   describe "write_report/3" do

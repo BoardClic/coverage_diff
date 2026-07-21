@@ -14,6 +14,9 @@ defmodule DiffCoverage.HtmlGenerator do
 
   - `:base_branch` - The base branch used for comparison (for display purposes)
   - `:diff_stats` - Map with `:additions`, `:deletions`, and `:files` counts
+  - `:stats` - Aggregate stats to display; defaults to stats computed from
+    `filtered_files`. Pass the stats for the full set of changed files when the
+    displayed files have been filtered down (e.g. fully-covered files hidden).
 
   """
   @spec generate([CoverageFilter.filtered_file()], keyword()) :: String.t()
@@ -21,7 +24,9 @@ defmodule DiffCoverage.HtmlGenerator do
     base_branch = Keyword.get(options, :base_branch, "main")
     diff_stats = Keyword.get(options, :diff_stats, %{additions: 0, deletions: 0, files: 0})
     skipped = Keyword.get(options, :skipped, %{files: [], lines: 0})
-    aggregate_stats = CoverageFilter.aggregate_stats(filtered_files)
+
+    aggregate_stats =
+      Keyword.get(options, :stats) || CoverageFilter.aggregate_stats(filtered_files)
 
     EEx.eval_file(
       template_path(),

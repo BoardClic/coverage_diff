@@ -71,6 +71,15 @@ Show more or fewer lines around changes (default is 3):
 mix coveralls.diff --context 5
 ```
 
+### Hide Fully-Covered Files
+
+Show only files that still have uncovered changes. The reported coverage
+percentage still reflects all changed lines:
+
+```bash
+mix coveralls.diff --hide-covered
+```
+
 ### Pass Arguments to Coveralls
 
 Pass additional arguments to the underlying `mix coveralls.json` command after `--`:
@@ -93,6 +102,7 @@ mix coveralls.diff --base develop --output cover/pr_coverage.html -- --exclude s
 | `--base` | `-b` | `main` | Base branch to compare against |
 | `--output` | `-o` | `cover/diff_coverage.html` | Output path for HTML report |
 | `--context` | `-c` | `3` | Number of context lines to show around changes |
+| `--hide-covered` | `-H` | `false` | Omit files whose changed lines are fully covered |
 
 ## How It Works
 

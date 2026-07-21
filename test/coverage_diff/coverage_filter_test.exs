@@ -198,6 +198,24 @@ defmodule DiffCoverage.CoverageFilterTest do
     end
   end
 
+  describe "reject_fully_covered/1" do
+    test "keeps only files with uncovered changed lines" do
+      filtered_files = [
+        %{path: "lib/gaps.ex", lines: [], stats: %{uncovered_changed: 2}},
+        %{path: "lib/covered.ex", lines: [], stats: %{uncovered_changed: 0}},
+        %{path: "lib/non_exec.ex", lines: [], stats: %{uncovered_changed: 0}}
+      ]
+
+      assert [%{path: "lib/gaps.ex"}] = CoverageFilter.reject_fully_covered(filtered_files)
+    end
+
+    test "returns empty list when every file is fully covered" do
+      filtered_files = [%{path: "lib/covered.ex", lines: [], stats: %{uncovered_changed: 0}}]
+
+      assert [] = CoverageFilter.reject_fully_covered(filtered_files)
+    end
+  end
+
   describe "aggregate_stats/1" do
     test "aggregates stats across all files" do
       filtered_files = [
