@@ -8,6 +8,7 @@ defmodule Mix.Tasks.Coveralls.Diff do
       $ mix coveralls.diff
       $ mix coveralls.diff --base develop
       $ mix coveralls.diff --output cover/my_report.html
+      $ mix coveralls.diff --hide-covered
       $ mix coveralls.diff -- --exclude integration
 
   ## Options
@@ -15,6 +16,9 @@ defmodule Mix.Tasks.Coveralls.Diff do
   - `--base` - Base branch to compare against (default: `main`)
   - `--output` - Output path for HTML report (default: `cover/diff_coverage.html`)
   - `--context` - Number of context lines around changes (default: 3)
+  - `--hide-covered` - Omit files whose changed lines are fully covered, so the
+    report lists only changes that still need tests. The reported coverage
+    percentage still reflects all changed lines.
 
   Any arguments after `--` are passed through to `mix coveralls.json`.
 
@@ -44,20 +48,21 @@ defmodule Mix.Tasks.Coveralls.Diff do
 
     {options, _, _} =
       OptionParser.parse(our_args,
-        strict: [base: :string, output: :string, context: :integer],
-        aliases: [b: :base, o: :output, c: :context]
+        strict: [base: :string, output: :string, context: :integer, hide_covered: :boolean],
+        aliases: [b: :base, o: :output, c: :context, H: :hide_covered]
       )
 
     base_branch = Keyword.get(options, :base, @default_base)
     output_path = Keyword.get(options, :output, @default_output)
     context_lines = Keyword.get(options, :context, 3)
+    hide_covered = Keyword.get(options, :hide_covered, false)
 
     Mix.shell().info([:cyan, "Running tests with coverage...", :reset])
 
     case run_coveralls_json(passthrough_args) do
       :ok ->
         Mix.shell().info([:cyan, "Analyzing coverage for changed files...", :reset])
-        analyze_and_report(base_branch, output_path, context_lines)
+        analyze_and_report(base_branch, output_path, context_lines, hide_covered)
 
       {:error, reason} ->
         Mix.shell().error("Failed to run coveralls: #{reason}")
@@ -80,7 +85,7 @@ defmodule Mix.Tasks.Coveralls.Diff do
     e -> {:error, Exception.message(e)}
   end
 
-  defp analyze_and_report(base_branch, output_path, context_lines) do
+  defp analyze_and_report(base_branch, output_path, context_lines, hide_covered) do
     with {:ok, changes} <- DiffParser.changed_lines(base_branch),
          {:ok, diff_stats} <- DiffParser.diff_stats(base_branch),
          {:ok, coverage_data} <- read_coverage_json(),
@@ -95,19 +100,27 @@ defmodule Mix.Tasks.Coveralls.Diff do
             skip_files: skip_patterns
           )
 
+        aggregate_stats = CoverageFilter.aggregate_stats(filtered_files)
+
+        report_files =
+          if hide_covered,
+            do: CoverageFilter.reject_fully_covered(filtered_files),
+            else: filtered_files
+
         skipped = CoverageFilter.find_skipped(coverage_data, changes, skip_patterns)
 
         report_options = [
           base_branch: base_branch,
           diff_stats: diff_stats,
-          skipped: skipped
+          skipped: skipped,
+          stats: aggregate_stats
         ]
 
         overall_stats = CoverageFilter.overall_coverage(coverage_data)
 
-        case HtmlGenerator.write_report(filtered_files, output_path, report_options) do
+        case HtmlGenerator.write_report(report_files, output_path, report_options) do
           :ok ->
-            print_summary(filtered_files, overall_stats, skipped, output_path)
+            print_summary(report_files, overall_stats, aggregate_stats, skipped, output_path)
             :ok
 
           {:error, reason} ->
@@ -141,9 +154,7 @@ defmodule Mix.Tasks.Coveralls.Diff do
     end
   end
 
-  defp print_summary(filtered_files, overall_stats, skipped, output_path) do
-    stats = CoverageFilter.aggregate_stats(filtered_files)
-
+  defp print_summary(filtered_files, overall_stats, stats, skipped, output_path) do
     Mix.shell().info("")
 
     Mix.shell().info([

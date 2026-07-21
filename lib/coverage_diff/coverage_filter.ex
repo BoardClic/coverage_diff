@@ -57,6 +57,18 @@ defmodule DiffCoverage.CoverageFilter do
     |> Enum.sort_by(& &1.stats.uncovered_changed, :desc)
   end
 
+  @doc """
+  Rejects files whose changed lines are fully covered.
+
+  Keeps only files with at least one uncovered changed line, so a report can
+  focus on changes that still need tests. Files with no executable changed lines
+  count as fully covered and are also rejected.
+  """
+  @spec reject_fully_covered([filtered_file()]) :: [filtered_file()]
+  def reject_fully_covered(filtered_files) do
+    Enum.reject(filtered_files, &(&1.stats.uncovered_changed == 0))
+  end
+
   @typedoc "Information about skipped files"
   @type skipped_info :: %{
           files: [String.t()],
